@@ -85,7 +85,6 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
           <p className="mt-2 text-sm text-slate-600">{propiedad.descripcion}</p>
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
-            {/* Calculadora */}
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-2 font-bold text-slate-900">
                 <Calculator className="h-5 w-5 text-amber-600" />
@@ -149,7 +148,6 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
               )}
             </div>
 
-            {/* Formulario de Lead */}
             <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 p-4">
               <h3 className="font-bold text-slate-900">Contactar a {DATOS_ASESORA.nombre}</h3>
               <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
@@ -208,13 +206,6 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
                   </p>
                 )}
               </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
             </form>
           </div>
         </div>
