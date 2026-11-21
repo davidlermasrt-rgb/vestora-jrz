@@ -55,10 +55,10 @@ export default function VestoraHome() {
           >
             {!logoError ? (
               <img
-                src="/logo-vestora.png"
+                src="/logo-vestora.jpg"
                 alt="Logo Vestora JRZ"
                 onError={() => setLogoError(true)}
-                className="h-11 w-11 rounded-lg object-contain bg-slate-900 p-0.5 border border-amber-500/40"
+                className="h-14 w-auto rounded-lg object-contain"
               />
             ) : (
               <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-lg shadow">
