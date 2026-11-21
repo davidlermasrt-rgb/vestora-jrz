@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
-import { X, Calculator, Send, CheckCircle2 } from 'lucide-react';
-import { Propiedad, Lead } from './data';
+import { X, Calculator, Send, CheckCircle2, Mail } from 'lucide-react';
+import { Propiedad, Lead, DATOS_ASESORA } from './data';
 
 interface Props {
   propiedad: Propiedad | null;
@@ -16,6 +16,7 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
 
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [correo, setCorreo] = useState('');
   const [credito, setCredito] = useState('Crédito Bancario');
   const [enviado, setEnviado] = useState(false);
 
@@ -31,12 +32,13 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !telefono) return;
+    if (!nombre || !telefono || !correo) return;
 
     const nuevoLead: Lead = {
       id: `LEAD-${Date.now().toString().slice(-4)}`,
       nombre,
       telefono,
+      correo,
       credito: propiedad.operacion === 'Renta' ? 'Arrendamiento' : credito,
       propiedadInteres: `${propiedad.id} - ${propiedad.titulo}`,
       estatus: 'Nuevo',
@@ -47,10 +49,9 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
     setEnviado(true);
 
     const textoWA = encodeURIComponent(
-      `Hola Landy, soy ${nombre}. Me interesa la propiedad "${propiedad.titulo}" (${propiedad.id}) en ${propiedad.zona}. Busco información con ${nuevoLead.credito}.`
+      `Hola ${DATOS_ASESORA.nombre}, soy ${nombre} (${correo}). Me interesa el ${propiedad.tipo} "${propiedad.titulo}" (${propiedad.id}) en ${propiedad.zona}. Busco información con ${nuevoLead.credito}.`
     );
-    window.open(`https://wa.me/526564190479
-        ?text=${textoWA}`, '_blank');
+    window.open(`https://wa.me/${DATOS_ASESORA.telefonoWA}?text=${textoWA}`, '_blank');
   };
 
   return (
@@ -67,9 +68,14 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
 
         <div className="p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
-              {propiedad.zona} • {propiedad.operacion}
-            </span>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                {propiedad.zona} • {propiedad.operacion}
+              </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+                {propiedad.tipo} {propiedad.condicion !== 'N/A' ? `• ${propiedad.condicion}` : ''}
+              </span>
+            </div>
             <span className="text-2xl font-extrabold text-slate-900">
               ${propiedad.precioMXN.toLocaleString('es-MX')} MXN
             </span>
@@ -145,10 +151,12 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
 
             {/* Formulario de Lead */}
             <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 p-4">
-              <h3 className="font-bold text-slate-900">Agendar visita con Landy Arce</h3>
-              <p className="text-xs text-slate-500">Te contactamos directo por WhatsApp</p>
+              <h3 className="font-bold text-slate-900">Contactar a {DATOS_ASESORA.nombre}</h3>
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+                <Mail className="h-3.5 w-3.5 text-amber-600" /> {DATOS_ASESORA.correo}
+              </p>
 
-              <div className="mt-3 space-y-3 text-sm">
+              <div className="mt-3 space-y-2.5 text-sm">
                 <input
                   type="text"
                   required
@@ -163,6 +171,14 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
                   placeholder="WhatsApp (ej. 656 123 4567)"
                   value={telefono}
                   onChange={(e) => setTelefono(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-2.5 text-slate-900"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Tu correo electrónico"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 p-2.5 text-slate-900"
                 />
                 {propiedad.operacion === 'Venta' && (
@@ -188,10 +204,17 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
 
                 {enviado && (
                   <p className="flex items-center gap-1 text-xs font-medium text-emerald-700">
-                    <CheckCircle2 className="h-4 w-4" /> ¡Prospecto registrado en el CRM!
+                    <CheckCircle2 className="h-4 w-4" /> ¡Datos enviados a {DATOS_ASESORA.nombre}!
                   </p>
                 )}
               </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
             </form>
           </div>
         </div>

@@ -1,6 +1,8 @@
 export interface Propiedad {
   id: string;
   titulo: string;
+  tipo: 'Casa' | 'Departamento' | 'Terreno';
+  condicion: 'Nueva' | 'Usada' | 'Remodelada' | 'N/A';
   zona: 'Campos Elíseos' | 'Las Misiones' | 'Valle del Sol' | 'Gómez Morín' | 'San Lorenzo';
   operacion: 'Venta' | 'Renta';
   precioMXN: number;
@@ -17,16 +19,27 @@ export interface Lead {
   id: string;
   nombre: string;
   telefono: string;
+  correo: string;
   credito: string;
   propiedadInteres: string;
   estatus: 'Nuevo' | 'Contactado' | 'Visita Agendada' | 'Cerrado';
   fecha: string;
 }
 
+export const DATOS_ASESORA = {
+  nombre: 'Landy Arce',
+  telefonoWA: '526564190479',
+  telefonoMostrar: '656 419 0479',
+  correo: 'landyarce.vestorajrz@gmail.com',
+  instagram: '@landyarcebienesraices',
+};
+
 export const PROPIEDADES_INICIALES: Propiedad[] = [
   {
     id: 'VJRZ-101',
     titulo: 'Residencia Contemporánea en Privada',
+    tipo: 'Casa',
+    condicion: 'Nueva',
     zona: 'Campos Elíseos',
     operacion: 'Venta',
     precioMXN: 5850000,
@@ -41,6 +54,8 @@ export const PROPIEDADES_INICIALES: Propiedad[] = [
   {
     id: 'VJRZ-102',
     titulo: 'Casa Familiar frente a Parque',
+    tipo: 'Casa',
+    condicion: 'Usada',
     zona: 'Valle del Sol',
     operacion: 'Venta',
     precioMXN: 3450000,
@@ -55,6 +70,8 @@ export const PROPIEDADES_INICIALES: Propiedad[] = [
   {
     id: 'VJRZ-103',
     titulo: 'Departamento Ejecutivo Amueblado',
+    tipo: 'Departamento',
+    condicion: 'Nueva',
     zona: 'Las Misiones',
     operacion: 'Renta',
     precioMXN: 24500,
@@ -69,6 +86,8 @@ export const PROPIEDADES_INICIALES: Propiedad[] = [
   {
     id: 'VJRZ-104',
     titulo: 'Residencia Minimalista de Estreno',
+    tipo: 'Casa',
+    condicion: 'Nueva',
     zona: 'Campos Elíseos',
     operacion: 'Venta',
     precioMXN: 6900000,
@@ -83,6 +102,8 @@ export const PROPIEDADES_INICIALES: Propiedad[] = [
   {
     id: 'VJRZ-105',
     titulo: 'Casa Remodelada Zona Dorada',
+    tipo: 'Casa',
+    condicion: 'Remodelada',
     zona: 'Gómez Morín',
     operacion: 'Venta',
     precioMXN: 2890000,
@@ -92,20 +113,22 @@ export const PROPIEDADES_INICIALES: Propiedad[] = [
     recamaras: 3,
     banos: 2,
     imagen: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=900&q=80',
-    descripcion: 'A 3 minutos de Av. Gómez Morín. Acepta crédito Infonavit, Cofinavit y bancario. Lista para escriturar.'
+    descripcion: 'Totalmente renovada a 3 minutos de Av. Gómez Morín. Acepta crédito Infonavit, Cofinavit y bancario.'
   },
   {
     id: 'VJRZ-106',
-    titulo: 'Propiedad Comercial / Habitacional',
+    titulo: 'Terreno Comercial / Residencial en Esquina',
+    tipo: 'Terreno',
+    condicion: 'N/A',
     zona: 'San Lorenzo',
     operacion: 'Venta',
     precioMXN: 4100000,
-    estatus: 'Vendida',
-    terrenoM2: 400,
-    construccionM2: 260,
-    recamaras: 3,
-    banos: 2,
-    imagen: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80',
-    descripcion: 'Amplio terreno en esquina con alta plusvalía comercial y residencial en San Lorenzo.'
+    estatus: 'Disponible',
+    terrenoM2: 450,
+    construccionM2: 0,
+    recamaras: 0,
+    banos: 0,
+    imagen: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=80',
+    descripcion: 'Terreno plano listo para escriturar en esquina de alto flujo vehicular, ideal para plaza comercial o desarrollo.'
   }
 ];
