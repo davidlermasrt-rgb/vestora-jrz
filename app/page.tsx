@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Building2, Search, BedDouble, Bath, Maximize2, ShieldCheck, MapPin, Phone, Mail } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, BedDouble, Bath, Maximize2, ShieldCheck, MapPin, Phone, Mail } from 'lucide-react';
 import { PROPIEDADES_INICIALES, Propiedad, Lead, DATOS_ASESORA } from './data';
 import ModalDetalle from './ModalDetalle';
 import PanelAdmin from './PanelAdmin';
@@ -26,6 +26,12 @@ export default function VestoraHome() {
     if (leadsGuardados) setLeads(JSON.parse(leadsGuardados));
   }, []);
 
+  // Extrae automáticamente todas las zonas únicas del catálogo (incluyendo las nuevas que publique Landy)
+  const zonasUnicas = useMemo(() => {
+    const setZonas = new Set(propiedades.map((p) => p.zona.trim()).filter(Boolean));
+    return Array.from(setZonas).sort();
+  }, [propiedades]);
+
   const guardarPropiedades = (nuevas: Propiedad[]) => {
     setPropiedades(nuevas);
     localStorage.setItem('vestora_props_v2', JSON.stringify(nuevas));
@@ -49,10 +55,7 @@ export default function VestoraHome() {
       {/* Navbar con Logo */}
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950 text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5">
-          <div
-            onClick={() => setVistaAdmin(false)}
-            className="flex cursor-pointer items-center gap-3"
-          >
+          <div onClick={() => setVistaAdmin(false)} className="flex cursor-pointer items-center gap-3">
             {!logoError ? (
               <img
                 src="/logo-vestora.jpg"
@@ -61,7 +64,7 @@ export default function VestoraHome() {
                 className="h-14 w-auto rounded-lg object-contain"
               />
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-black text-lg shadow">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-lg font-black text-slate-950 shadow">
                 VJ
               </div>
             )}
@@ -96,6 +99,7 @@ export default function VestoraHome() {
         <PanelAdmin
           propiedades={propiedades}
           leads={leads}
+          zonasDisponibles={zonasUnicas}
           onActualizarEstatusProp={(id, estatus) =>
             guardarPropiedades(propiedades.map((p) => (p.id === id ? { ...p, estatus } : p)))
           }
@@ -163,11 +167,11 @@ export default function VestoraHome() {
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-sm font-medium"
                   >
                     <option value="Todas">Todas las zonas</option>
-                    <option value="Campos Elíseos">Campos Elíseos</option>
-                    <option value="Las Misiones">Las Misiones</option>
-                    <option value="Valle del Sol">Valle del Sol</option>
-                    <option value="Gómez Morín">Gómez Morín</option>
-                    <option value="San Lorenzo">San Lorenzo</option>
+                    {zonasUnicas.map((z) => (
+                      <option key={z} value={z}>
+                        {z}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -216,7 +220,7 @@ export default function VestoraHome() {
                     className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
                       filtroTipo === cat
                         ? 'bg-slate-900 text-amber-400'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {cat === 'Todos' ? 'Todas' : `${cat}s`}

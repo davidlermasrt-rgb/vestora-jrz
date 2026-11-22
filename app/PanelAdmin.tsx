@@ -6,6 +6,7 @@ import { Propiedad, Lead, DATOS_ASESORA } from './data';
 interface Props {
   propiedades: Propiedad[];
   leads: Lead[];
+  zonasDisponibles: string[];
   onActualizarEstatusProp: (id: string, estatus: Propiedad['estatus']) => void;
   onEliminarPropiedad: (id: string) => void;
   onAgregarPropiedad: (prop: Propiedad) => void;
@@ -16,6 +17,7 @@ interface Props {
 export default function PanelAdmin({
   propiedades,
   leads,
+  zonasDisponibles,
   onActualizarEstatusProp,
   onEliminarPropiedad,
   onAgregarPropiedad,
@@ -29,13 +31,14 @@ export default function PanelAdmin({
   const [titulo, setTitulo] = useState('');
   const [tipo, setTipo] = useState<Propiedad['tipo']>('Casa');
   const [condicion, setCondicion] = useState<Propiedad['condicion']>('Nueva');
-  const [zona, setZona] = useState<Propiedad['zona']>('Campos Elíseos');
+  const [zonaSeleccionada, setZonaSeleccionada] = useState('Campos Elíseos');
+  const [zonaNueva, setZonaNueva] = useState('');
   const [operacion, setOperacion] = useState<Propiedad['operacion']>('Venta');
   const [precioMXN, setPrecioMXN] = useState('');
-  const [terrenoM2, setTerrenoM2] = useState('240');
-  const [construccionM2, setConstruccionM2] = useState('200');
-  const [recamaras, setRecamaras] = useState('3');
-  const [banos, setBanos] = useState('2.5');
+  const [terrenoM2, setTerrenoM2] = useState('');
+  const [construccionM2, setConstruccionM2] = useState('');
+  const [recamaras, setRecamaras] = useState('');
+  const [banos, setBanos] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [imagenPreview, setImagenPreview] = useState<string>('');
 
@@ -49,7 +52,6 @@ export default function PanelAdmin({
     }
   };
 
-  // Convierte y comprime la foto subida desde celular o PC para guardarla al instante
   const handleSubirFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
@@ -74,31 +76,43 @@ export default function PanelAdmin({
 
   const handleCrearPropiedad = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!titulo || !precioMXN) return;
+    const zonaFinal =
+      zonaSeleccionada === '__NUEVA__' ? zonaNueva.trim() : zonaSeleccionada;
+
+    if (!titulo || !precioMXN || !zonaFinal) return;
 
     const nueva: Propiedad = {
       id: `VJRZ-${Math.floor(200 + Math.random() * 700)}`,
       titulo,
       tipo,
       condicion: tipo === 'Terreno' ? 'N/A' : condicion,
-      zona,
+      zona: zonaFinal,
       operacion,
       precioMXN: Number(precioMXN),
       estatus: 'Disponible',
       terrenoM2: Number(terrenoM2) || 200,
-      construccionM2: tipo === 'Terreno' ? 0 : Number(construccionM2) || 180,
-      recamaras: tipo === 'Terreno' ? 0 : Number(recamaras) || 3,
-      banos: tipo === 'Terreno' ? 0 : Number(banos) || 2,
+      construccionM2: tipo === 'Terreno' ? 0 : Number(construccionM2) || 0,
+      recamaras: tipo === 'Terreno' ? 0 : Number(recamaras) || 0,
+      banos: tipo === 'Terreno' ? 0 : Number(banos) || 0,
       imagen:
         imagenPreview ||
         'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80',
       descripcion: descripcion || 'Propiedad publicada en el catálogo oficial de Vestora JRZ Inmobiliaria.',
     };
+
     onAgregarPropiedad(nueva);
     setTitulo('');
     setPrecioMXN('');
+    setTerrenoM2('');
+    setConstruccionM2('');
+    setRecamaras('');
+    setBanos('');
     setDescripcion('');
     setImagenPreview('');
+    if (zonaSeleccionada === '__NUEVA__') {
+      setZonaSeleccionada(zonaFinal);
+      setZonaNueva('');
+    }
   };
 
   if (!autenticado) {
@@ -154,110 +168,153 @@ export default function PanelAdmin({
         </button>
       </div>
 
-      {/* Formulario Alta con Subida de Foto */}
+      {/* Formulario Alta con Etiquetas Claras y Zona Dinámica */}
       <form onSubmit={handleCrearPropiedad} className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
           <PlusCircle className="h-5 w-5 text-amber-600" /> Publicar Nueva Propiedad
         </h3>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-4">
-          <input
-            type="text"
-            required
-            placeholder="Título (ej. Casa en Bosques de Senecú)"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900 md:col-span-2"
-          />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-bold text-slate-700">Título de la propiedad *</label>
+            <input
+              type="text"
+              required
+              placeholder="Ej. Casa familiar en Arroyos del Paraíso"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+            />
+          </div>
 
-          <select
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as Propiedad['tipo'])}
-            className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
-          >
-            <option value="Casa">Casa</option>
-            <option value="Departamento">Departamento</option>
-            <option value="Terreno">Terreno</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Tipo de inmueble</label>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as Propiedad['tipo'])}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
+            >
+              <option value="Casa">Casa</option>
+              <option value="Departamento">Departamento</option>
+              <option value="Terreno">Terreno</option>
+            </select>
+          </div>
 
-          <select
-            value={condicion}
-            disabled={tipo === 'Terreno'}
-            onChange={(e) => setCondicion(e.target.value as Propiedad['condicion'])}
-            className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900 disabled:bg-slate-100"
-          >
-            <option value="Nueva">Nueva</option>
-            <option value="Usada">Usada</option>
-            <option value="Remodelada">Remodelada</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Condición</label>
+            <select
+              value={condicion}
+              disabled={tipo === 'Terreno'}
+              onChange={(e) => setCondicion(e.target.value as Propiedad['condicion'])}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900 disabled:bg-slate-100"
+            >
+              <option value="Nueva">Nueva</option>
+              <option value="Usada">Usada</option>
+              <option value="Remodelada">Remodelada</option>
+            </select>
+          </div>
 
-          <select
-            value={zona}
-            onChange={(e) => setZona(e.target.value as Propiedad['zona'])}
-            className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
-          >
-            <option>Campos Elíseos</option>
-            <option>Las Misiones</option>
-            <option>Valle del Sol</option>
-            <option>Gómez Morín</option>
-            <option>San Lorenzo</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Zona / Fraccionamiento *</label>
+            <select
+              value={zonaSeleccionada}
+              onChange={(e) => setZonaSeleccionada(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
+            >
+              {zonasDisponibles.map((z) => (
+                <option key={z} value={z}>
+                  {z}
+                </option>
+              ))}
+              <option value="__NUEVA__">+ Agregar nueva zona...</option>
+            </select>
+            {zonaSeleccionada === '__NUEVA__' && (
+              <input
+                type="text"
+                required
+                placeholder="Escribe el nombre de la zona"
+                value={zonaNueva}
+                onChange={(e) => setZonaNueva(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-amber-500 bg-amber-50/40 p-2 text-sm text-slate-900"
+              />
+            )}
+          </div>
 
-          <select
-            value={operacion}
-            onChange={(e) => setOperacion(e.target.value as Propiedad['operacion'])}
-            className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
-          >
-            <option>Venta</option>
-            <option>Renta</option>
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Operación</label>
+            <select
+              value={operacion}
+              onChange={(e) => setOperacion(e.target.value as Propiedad['operacion'])}
+              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900"
+            >
+              <option value="Venta">Venta</option>
+              <option value="Renta">Renta</option>
+            </select>
+          </div>
 
-          <input
-            type="number"
-            required
-            placeholder="Precio en MXN (ej. 3500000)"
-            value={precioMXN}
-            onChange={(e) => setPrecioMXN(e.target.value)}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
-          />
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Precio (MXN) *</label>
+            <input
+              type="number"
+              required
+              placeholder="Ej. 3500000"
+              value={precioMXN}
+              onChange={(e) => setPrecioMXN(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+            />
+          </div>
 
-          <input
-            type="number"
-            placeholder="Terreno m²"
-            value={terrenoM2}
-            onChange={(e) => setTerrenoM2(e.target.value)}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
-          />
+          <div>
+            <label className="mb-1 block text-xs font-bold text-slate-700">Metros de Terreno (m²)</label>
+            <input
+              type="number"
+              placeholder="Ej. 240"
+              value={terrenoM2}
+              onChange={(e) => setTerrenoM2(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+            />
+          </div>
 
           {tipo !== 'Terreno' && (
             <>
-              <input
-                type="number"
-                placeholder="Construcción m²"
-                value={construccionM2}
-                onChange={(e) => setConstruccionM2(e.target.value)}
-                className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
-              />
-              <input
-                type="number"
-                placeholder="Recámaras"
-                value={recamaras}
-                onChange={(e) => setRecamaras(e.target.value)}
-                className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
-              />
-              <input
-                type="number"
-                step="0.5"
-                placeholder="Baños (ej. 2.5)"
-                value={banos}
-                onChange={(e) => setBanos(e.target.value)}
-                className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
-              />
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Metros de Construcción (m²)</label>
+                <input
+                  type="number"
+                  placeholder="Ej. 210"
+                  value={construccionM2}
+                  onChange={(e) => setConstruccionM2(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Habitaciones / Recámaras</label>
+                <input
+                  type="number"
+                  placeholder="Ej. 3"
+                  value={recamaras}
+                  onChange={(e) => setRecamaras(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Baños</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  placeholder="Ej. 2.5"
+                  value={banos}
+                  onChange={(e) => setBanos(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+                />
+              </div>
             </>
           )}
 
-          {/* Apartado para Subir Foto */}
           <div className="md:col-span-2">
+            <label className="mb-1 block text-xs font-bold text-slate-700">Fotografía principal</label>
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-500/60 bg-amber-50/50 p-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-50">
               <ImagePlus className="h-5 w-5 text-amber-600" />
               <span>{imagenPreview ? 'Foto cargada (clic para cambiar)' : 'Subir foto desde galería o PC'}</span>
@@ -265,26 +322,31 @@ export default function PanelAdmin({
             </label>
           </div>
 
-          <input
-            type="text"
-            placeholder="Descripción breve (acabados, cercana a consulado, etc.)"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            className="rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900 md:col-span-3"
-          />
+          <div className="md:col-span-3">
+            <label className="mb-1 block text-xs font-bold text-slate-700">Descripción y equipamiento</label>
+            <input
+              type="text"
+              placeholder="Ej. Cocina con cubierta de cuarzo, cochera techada, cercana a consulado..."
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm text-slate-900"
+            />
+          </div>
 
-          <button
-            type="submit"
-            className="rounded-lg bg-slate-900 py-2.5 font-bold text-amber-400 hover:bg-slate-800"
-          >
-            Publicar Propiedad
-          </button>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-slate-900 py-2.5 font-bold text-amber-400 hover:bg-slate-800"
+            >
+              Publicar Propiedad
+            </button>
+          </div>
         </div>
 
         {imagenPreview && (
           <div className="mt-4 flex items-center gap-3">
-            <img src={imagenPreview} alt="Vista previa" className="h-20 w-32 rounded-lg object-cover border" />
-            <span className="text-xs text-emerald-700 font-medium">✓ Imagen optimizada y lista para publicarse</span>
+            <img src={imagenPreview} alt="Vista previa" className="h-20 w-32 rounded-lg border object-cover" />
+            <span className="text-xs font-medium text-emerald-700">✓ Imagen optimizada y lista para publicarse</span>
           </div>
         )}
       </form>

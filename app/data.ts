@@ -3,7 +3,7 @@ export interface Propiedad {
   titulo: string;
   tipo: 'Casa' | 'Departamento' | 'Terreno';
   condicion: 'Nueva' | 'Usada' | 'Remodelada' | 'N/A';
-  zona: 'Campos Elíseos' | 'Las Misiones' | 'Valle del Sol' | 'Gómez Morín' | 'San Lorenzo';
+  zona: string; // <-- Antes estaba limitado a 5 zonas; ahora acepta cualquier zona nueva
   operacion: 'Venta' | 'Renta';
   precioMXN: number;
   estatus: 'Disponible' | 'Apartada' | 'Vendida';
