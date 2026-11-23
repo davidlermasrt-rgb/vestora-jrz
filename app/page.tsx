@@ -2,14 +2,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, BedDouble, Bath, Maximize2, ShieldCheck, MapPin, Phone, Mail } from 'lucide-react';
 import { PROPIEDADES_INICIALES, Propiedad, Lead, DATOS_ASESORA } from './data';
+import { supabase } from './supabase';
 import ModalDetalle from './ModalDetalle';
 import PanelAdmin from './PanelAdmin';
 
 const TIPO_CAMBIO_USD = 20.2;
 
 export default function VestoraHome() {
-  const [propiedades, setPropiedades] = useState<Propiedad[]>(PROPIEDADES_INICIALES);
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [cargando, setCargando] = useState(true);
   const [vistaAdmin, setVistaAdmin] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
@@ -20,26 +22,67 @@ export default function VestoraHome() {
   const [propiedadActiva, setPropiedadActiva] = useState<Propiedad | null>(null);
 
   useEffect(() => {
-    const propsGuardadas = localStorage.getItem('vestora_props_v2');
-    const leadsGuardados = localStorage.getItem('vestora_leads_v2');
-    if (propsGuardadas) setPropiedades(JSON.parse(propsGuardadas));
-    if (leadsGuardados) setLeads(JSON.parse(leadsGuardados));
+    const cargarDatosNube = async () => {
+      setCargando(true);
+      const { data: propsDB, error: errProps } = await supabase
+        .from('propiedades')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!errProps && propsDB) {
+        if (propsDB.length === 0) {
+          await supabase.from('propiedades').insert(PROPIEDADES_INICIALES);
+          setPropiedades(PROPIEDADES_INICIALES);
+        } else {
+          setPropiedades(propsDB as Propiedad[]);
+        }
+      } else {
+        setPropiedades(PROPIEDADES_INICIALES);
+      }
+
+      const { data: leadsDB } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (leadsDB) setLeads(leadsDB as Lead[]);
+      setCargando(false);
+    };
+
+    cargarDatosNube();
   }, []);
 
-  // Extrae automáticamente todas las zonas únicas del catálogo (incluyendo las nuevas que publique Landy)
   const zonasUnicas = useMemo(() => {
     const setZonas = new Set(propiedades.map((p) => p.zona.trim()).filter(Boolean));
     return Array.from(setZonas).sort();
   }, [propiedades]);
 
-  const guardarPropiedades = (nuevas: Propiedad[]) => {
-    setPropiedades(nuevas);
-    localStorage.setItem('vestora_props_v2', JSON.stringify(nuevas));
+  const handleAgregarPropiedad = async (nueva: Propiedad) => {
+    setPropiedades((prev) => [nueva, ...prev]);
+    const { error } = await supabase.from('propiedades').insert([nueva]);
+    if (error) {
+      alert('Error al guardar en la nube: ' + error.message);
+    }
   };
 
-  const guardarLeads = (nuevos: Lead[]) => {
-    setLeads(nuevos);
-    localStorage.setItem('vestora_leads_v2', JSON.stringify(nuevos));
+  const handleActualizarEstatusProp = async (id: string, estatus: Propiedad['estatus']) => {
+    setPropiedades((prev) => prev.map((p) => (p.id === id ? { ...p, estatus } : p)));
+    await supabase.from('propiedades').update({ estatus }).eq('id', id);
+  };
+
+  const handleEliminarPropiedad = async (id: string) => {
+    setPropiedades((prev) => prev.filter((p) => p.id !== id));
+    await supabase.from('propiedades').delete().eq('id', id);
+  };
+
+  const handleGuardarLead = async (nuevoLead: Lead) => {
+    setLeads((prev) => [nuevoLead, ...prev]);
+    await supabase.from('leads').insert([nuevoLead]);
+  };
+
+  const handleActualizarEstatusLead = async (id: string, estatus: Lead['estatus']) => {
+    setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, estatus } : l)));
+    await supabase.from('leads').update({ estatus }).eq('id', id);
   };
 
   const propiedadesFiltradas = propiedades.filter((p) => {
@@ -100,14 +143,10 @@ export default function VestoraHome() {
           propiedades={propiedades}
           leads={leads}
           zonasDisponibles={zonasUnicas}
-          onActualizarEstatusProp={(id, estatus) =>
-            guardarPropiedades(propiedades.map((p) => (p.id === id ? { ...p, estatus } : p)))
-          }
-          onEliminarPropiedad={(id) => guardarPropiedades(propiedades.filter((p) => p.id !== id))}
-          onAgregarPropiedad={(nueva) => guardarPropiedades([nueva, ...propiedades])}
-          onActualizarEstatusLead={(id, estatus) =>
-            guardarLeads(leads.map((l) => (l.id === id ? { ...l, estatus } : l)))
-          }
+          onActualizarEstatusProp={handleActualizarEstatusProp}
+          onEliminarPropiedad={handleEliminarPropiedad}
+          onAgregarPropiedad={handleAgregarPropiedad}
+          onActualizarEstatusLead={handleActualizarEstatusLead}
           onCerrarPanel={() => setVistaAdmin(false)}
         />
       ) : (
@@ -201,7 +240,7 @@ export default function VestoraHome() {
             </div>
           </section>
 
-          {/* Catálogo con pestañas rápidas */}
+          {/* Catálogo */}
           <section id="catalogo" className="mx-auto max-w-7xl px-4 py-12">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -229,85 +268,89 @@ export default function VestoraHome() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {propiedadesFiltradas.map((prop) => (
-                <article
-                  key={prop.id}
-                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <div className="relative">
-                    <img src={prop.imagen} alt={prop.titulo} className="h-52 w-full object-cover" />
-                    <span
-                      className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${
-                        prop.estatus === 'Disponible'
-                          ? 'bg-emerald-600 text-white'
-                          : prop.estatus === 'Apartada'
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800 text-white'
-                      }`}
-                    >
-                      {prop.estatus}
-                    </span>
-                    <div className="absolute bottom-3 left-3 flex gap-1.5">
-                      <span className="rounded-md bg-slate-950/85 px-2.5 py-1 text-xs font-semibold text-amber-400">
-                        {prop.tipo}
+            {cargando ? (
+              <p className="mt-10 text-center text-sm text-slate-500">Cargando catálogo actualizado...</p>
+            ) : (
+              <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {propiedadesFiltradas.map((prop) => (
+                  <article
+                    key={prop.id}
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                  >
+                    <div className="relative">
+                      <img src={prop.imagen} alt={prop.titulo} className="h-52 w-full object-cover" />
+                      <span
+                        className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${
+                          prop.estatus === 'Disponible'
+                            ? 'bg-emerald-600 text-white'
+                            : prop.estatus === 'Apartada'
+                            ? 'bg-amber-500 text-slate-950'
+                            : 'bg-slate-800 text-white'
+                        }`}
+                      >
+                        {prop.estatus}
                       </span>
-                      {prop.condicion !== 'N/A' && (
-                        <span className="rounded-md bg-white/95 px-2.5 py-1 text-xs font-bold text-slate-900">
-                          {prop.condicion}
+                      <div className="absolute bottom-3 left-3 flex gap-1.5">
+                        <span className="rounded-md bg-slate-950/85 px-2.5 py-1 text-xs font-semibold text-amber-400">
+                          {prop.tipo}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <div className="flex items-center justify-between text-xs font-semibold text-amber-700">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" /> {prop.zona}, Cd. Juárez
-                      </span>
-                      <span className="text-slate-500">{prop.operacion}</span>
-                    </div>
-                    <h3 className="mt-1 text-lg font-bold text-slate-900">{prop.titulo}</h3>
-
-                    <div className="mt-2">
-                      <span className="text-xl font-extrabold text-slate-900">
-                        ${prop.precioMXN.toLocaleString('es-MX')} MXN
-                      </span>
-                      <span className="ml-2 text-xs text-slate-500">
-                        (~${Math.round(prop.precioMXN / TIPO_CAMBIO_USD).toLocaleString('en-US')} USD)
-                      </span>
+                        {prop.condicion !== 'N/A' && (
+                          <span className="rounded-md bg-white/95 px-2.5 py-1 text-xs font-bold text-slate-900">
+                            {prop.condicion}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
-                      {prop.tipo === 'Terreno' ? (
-                        <span className="flex items-center gap-1 font-medium">
-                          <Maximize2 className="h-4 w-4 text-slate-400" /> Superficie: {prop.terrenoM2} m²
+                    <div className="p-5">
+                      <div className="flex items-center justify-between text-xs font-semibold text-amber-700">
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3.5 w-3.5" /> {prop.zona}, Cd. Juárez
                         </span>
-                      ) : (
-                        <>
-                          <span className="flex items-center gap-1">
-                            <BedDouble className="h-4 w-4 text-slate-400" /> {prop.recamaras} Rec.
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Bath className="h-4 w-4 text-slate-400" /> {prop.banos} Baños
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Maximize2 className="h-4 w-4 text-slate-400" /> {prop.construccionM2} m²
-                          </span>
-                        </>
-                      )}
-                    </div>
+                        <span className="text-slate-500">{prop.operacion}</span>
+                      </div>
+                      <h3 className="mt-1 text-lg font-bold text-slate-900">{prop.titulo}</h3>
 
-                    <button
-                      onClick={() => setPropiedadActiva(prop)}
-                      className="mt-4 w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Ver detalles y contactar
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                      <div className="mt-2">
+                        <span className="text-xl font-extrabold text-slate-900">
+                          ${prop.precioMXN.toLocaleString('es-MX')} MXN
+                        </span>
+                        <span className="ml-2 text-xs text-slate-500">
+                          (~${Math.round(prop.precioMXN / TIPO_CAMBIO_USD).toLocaleString('en-US')} USD)
+                        </span>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600">
+                        {prop.tipo === 'Terreno' ? (
+                          <span className="flex items-center gap-1 font-medium">
+                            <Maximize2 className="h-4 w-4 text-slate-400" /> Superficie: {prop.terrenoM2} m²
+                          </span>
+                        ) : (
+                          <>
+                            <span className="flex items-center gap-1">
+                              <BedDouble className="h-4 w-4 text-slate-400" /> {prop.recamaras} Rec.
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Bath className="h-4 w-4 text-slate-400" /> {prop.banos} Baños
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Maximize2 className="h-4 w-4 text-slate-400" /> {prop.construccionM2} m²
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setPropiedadActiva(prop)}
+                        className="mt-4 w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                      >
+                        Ver detalles y contactar
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Footer */}
@@ -335,7 +378,7 @@ export default function VestoraHome() {
       <ModalDetalle
         propiedad={propiedadActiva}
         onCerrar={() => setPropiedadActiva(null)}
-        onGuardarLead={(nuevoLead) => guardarLeads([nuevoLead, ...leads])}
+        onGuardarLead={handleGuardarLead}
       />
     </div>
   );
