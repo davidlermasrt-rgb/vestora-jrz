@@ -1,6 +1,6 @@
 'use client';
-import React, { useState } from 'react';
-import { X, Calculator, Send, CheckCircle2, Mail } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Calculator, Send, CheckCircle2, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Propiedad, Lead, DATOS_ASESORA } from './data';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Props) {
+  const [fotoActiva, setFotoActiva] = useState(0);
   const [enganchePct, setEnganchePct] = useState(20);
   const [plazoAnios, setPlazoAnios] = useState(15);
   const [tasaAnual, setTasaAnual] = useState(10.5);
@@ -20,7 +21,25 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
   const [credito, setCredito] = useState('Crédito Bancario');
   const [enviado, setEnviado] = useState(false);
 
+  useEffect(() => {
+    setFotoActiva(0);
+    setEnviado(false);
+  }, [propiedad?.id]);
+
   if (!propiedad) return null;
+
+  const galeria =
+    propiedad.imagenes && propiedad.imagenes.length > 0
+      ? propiedad.imagenes
+      : [propiedad.imagen];
+
+  const anteriorFoto = () => {
+    setFotoActiva((prev) => (prev === 0 ? galeria.length - 1 : prev - 1));
+  };
+
+  const siguienteFoto = () => {
+    setFotoActiva((prev) => (prev === galeria.length - 1 ? 0 : prev + 1));
+  };
 
   const montoFinanciar = propiedad.precioMXN * (1 - enganchePct / 100);
   const tasaMensual = tasaAnual / 100 / 12;
@@ -59,12 +78,61 @@ export default function ModalDetalle({ propiedad, onCerrar, onGuardarLead }: Pro
       <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <button
           onClick={onCerrar}
-          className="absolute right-4 top-4 z-10 rounded-full bg-slate-900/80 p-2 text-white hover:bg-slate-800"
+          className="absolute right-4 top-4 z-20 rounded-full bg-slate-900/80 p-2 text-white hover:bg-slate-800"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <img src={propiedad.imagen} alt={propiedad.titulo} className="h-64 w-full object-cover" />
+        {/* Carrusel de Imágenes */}
+        <div className="relative bg-slate-900">
+          <img
+            src={galeria[fotoActiva]}
+            alt={`${propiedad.titulo} - Foto ${fotoActiva + 1}`}
+            className="h-72 w-full object-cover md:h-80"
+          />
+
+          {galeria.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={anteriorFoto}
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-900/75 p-2 text-white hover:bg-slate-900"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={siguienteFoto}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-slate-900/75 p-2 text-white hover:bg-slate-900"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <span className="absolute bottom-3 right-3 rounded-full bg-slate-950/80 px-3 py-1 text-xs font-semibold text-white">
+                {fotoActiva + 1} / {galeria.length}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Miniaturas */}
+        {galeria.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-slate-50 px-6 py-2.5">
+            {galeria.map((imgUrl, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setFotoActiva(idx)}
+                className={`relative h-14 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition ${
+                  fotoActiva === idx
+                    ? 'border-amber-500 ring-2 ring-amber-500/30'
+                    : 'border-transparent opacity-65 hover:opacity-100'
+                }`}
+              >
+                <img src={imgUrl} alt={`Miniatura ${idx + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-2">

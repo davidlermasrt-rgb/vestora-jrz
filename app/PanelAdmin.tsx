@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Lock, PlusCircle, Users, Home, LogOut, ImagePlus, Trash2 } from 'lucide-react';
+import { Lock, PlusCircle, Users, Home, LogOut, ImagePlus, Trash2, X, Star } from 'lucide-react';
 import { Propiedad, Lead, DATOS_ASESORA } from './data';
 
 interface Props {
@@ -13,6 +13,9 @@ interface Props {
   onActualizarEstatusLead: (id: string, estatus: Lead['estatus']) => void;
   onCerrarPanel: () => void;
 }
+
+const CLAVE_ADMIN = 'Landynataliavestora2026';
+const MINIMO_FOTOS = 4;
 
 export default function PanelAdmin({
   propiedades,
@@ -40,11 +43,12 @@ export default function PanelAdmin({
   const [recamaras, setRecamaras] = useState('');
   const [banos, setBanos] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [imagenPreview, setImagenPreview] = useState<string>('');
+  const [imagenesPreview, setImagenesPreview] = useState<string[]>([]);
+  const [errorFotos, setErrorFotos] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (clave === 'vestora2026') {
+    if (clave.trim() === CLAVE_ADMIN) {
       setAutenticado(true);
       setErrorClave(false);
     } else {
@@ -52,26 +56,52 @@ export default function PanelAdmin({
     }
   };
 
-  const handleSubirFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const archivo = e.target.files?.[0];
-    if (!archivo) return;
-
-    const lector = new FileReader();
-    lector.onload = (evento) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxAncho = 800;
-        const escala = maxAncho / img.width;
-        canvas.width = img.width > maxAncho ? maxAncho : img.width;
-        canvas.height = img.width > maxAncho ? img.height * escala : img.height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        setImagenPreview(canvas.toDataURL('image/jpeg', 0.8));
+  const comprimirImagen = (archivo: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const lector = new FileReader();
+      lector.onload = (evento) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxAncho = 720;
+          const escala = maxAncho / img.width;
+          canvas.width = img.width > maxAncho ? maxAncho : img.width;
+          canvas.height = img.width > maxAncho ? img.height * escala : img.height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.src = evento.target?.result as string;
       };
-      img.src = evento.target?.result as string;
-    };
-    lector.readAsDataURL(archivo);
+      lector.readAsDataURL(archivo);
+    });
+  };
+
+  const handleSubirFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const archivos = Array.from(e.target.files || []);
+    if (archivos.length === 0) return;
+
+    const nuevasComprimidas = await Promise.all(archivos.map(comprimirImagen));
+    setImagenesPreview((prev) => {
+      const combinadas = [...prev, ...nuevasComprimidas];
+      if (combinadas.length >= MINIMO_FOTOS) setErrorFotos('');
+      return combinadas;
+    });
+    e.target.value = '';
+  };
+
+  const handleEliminarFoto = (index: number) => {
+    setImagenesPreview((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleHacerPortada = (index: number) => {
+    if (index === 0) return;
+    setImagenesPreview((prev) => {
+      const copia = [...prev];
+      const [seleccionada] = copia.splice(index, 1);
+      copia.unshift(seleccionada);
+      return copia;
+    });
   };
 
   const handleCrearPropiedad = (e: React.FormEvent) => {
@@ -80,6 +110,11 @@ export default function PanelAdmin({
       zonaSeleccionada === '__NUEVA__' ? zonaNueva.trim() : zonaSeleccionada;
 
     if (!titulo || !precioMXN || !zonaFinal) return;
+
+    if (imagenesPreview.length < MINIMO_FOTOS) {
+      setErrorFotos(`Debes subir al menos ${MINIMO_FOTOS} fotografías (llevas ${imagenesPreview.length}).`);
+      return;
+    }
 
     const nueva: Propiedad = {
       id: `VJRZ-${Math.floor(200 + Math.random() * 700)}`,
@@ -94,9 +129,8 @@ export default function PanelAdmin({
       construccionM2: tipo === 'Terreno' ? 0 : Number(construccionM2) || 0,
       recamaras: tipo === 'Terreno' ? 0 : Number(recamaras) || 0,
       banos: tipo === 'Terreno' ? 0 : Number(banos) || 0,
-      imagen:
-        imagenPreview ||
-        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80',
+      imagen: imagenesPreview[0],
+      imagenes: imagenesPreview,
       descripcion: descripcion || 'Propiedad publicada en el catálogo oficial de Vestora JRZ Inmobiliaria.',
     };
 
@@ -108,7 +142,8 @@ export default function PanelAdmin({
     setRecamaras('');
     setBanos('');
     setDescripcion('');
-    setImagenPreview('');
+    setImagenesPreview([]);
+    setErrorFotos('');
     if (zonaSeleccionada === '__NUEVA__') {
       setZonaSeleccionada(zonaFinal);
       setZonaNueva('');
@@ -122,17 +157,21 @@ export default function PanelAdmin({
           <Lock className="h-6 w-6" />
         </div>
         <h2 className="mt-4 text-center text-xl font-bold text-slate-900">Acceso Asesora • Vestora JRZ</h2>
-        <p className="mt-1 text-center text-xs text-slate-500">Clave demo: vestora2026</p>
+        <p className="mt-1 text-center text-xs text-slate-500">Ingresa tu clave privada de administración</p>
 
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
           <input
             type="password"
-            placeholder="Ingresa tu clave de acceso"
+            placeholder="Contraseña de acceso"
             value={clave}
             onChange={(e) => setClave(e.target.value)}
             className="w-full rounded-lg border border-slate-300 p-3 text-slate-900"
           />
-          {errorClave && <p className="text-xs text-red-600">Clave incorrecta. Usa: vestora2026</p>}
+          {errorClave && (
+            <p className="text-xs font-medium text-red-600">
+              Contraseña incorrecta. Verifica mayúsculas y minúsculas.
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
@@ -153,12 +192,14 @@ export default function PanelAdmin({
     );
   }
 
+  const faltanFotos = Math.max(0, MINIMO_FOTOS - imagenesPreview.length);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Panel Administrativo • {DATOS_ASESORA.nombre}</h2>
-          <p className="text-sm text-slate-500">Sube propiedades con foto y gestiona tus prospectos en Ciudad Juárez</p>
+          <p className="text-sm text-slate-500">Sube propiedades con galería de fotos y gestiona tus prospectos en Ciudad Juárez</p>
         </div>
         <button
           onClick={onCerrarPanel}
@@ -168,7 +209,7 @@ export default function PanelAdmin({
         </button>
       </div>
 
-      {/* Formulario Alta con Etiquetas Claras y Zona Dinámica */}
+      {/* Formulario Alta */}
       <form onSubmit={handleCrearPropiedad} className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
           <PlusCircle className="h-5 w-5 text-amber-600" /> Publicar Nueva Propiedad
@@ -314,11 +355,23 @@ export default function PanelAdmin({
           )}
 
           <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-bold text-slate-700">Fotografía principal</label>
+            <label className="mb-1 block text-xs font-bold text-slate-700">
+              Galería de fotografías * ({imagenesPreview.length} / {MINIMO_FOTOS} mínimas)
+            </label>
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-2 border-dashed border-amber-500/60 bg-amber-50/50 p-2.5 text-sm font-semibold text-amber-900 hover:bg-amber-50">
               <ImagePlus className="h-5 w-5 text-amber-600" />
-              <span>{imagenPreview ? 'Foto cargada (clic para cambiar)' : 'Subir foto desde galería o PC'}</span>
-              <input type="file" accept="image/*" onChange={handleSubirFoto} className="hidden" />
+              <span>
+                {imagenesPreview.length === 0
+                  ? 'Seleccionar 4 o más fotos'
+                  : `Agregar más fotos (${imagenesPreview.length} cargadas)`}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleSubirFotos}
+                className="hidden"
+              />
             </label>
           </div>
 
@@ -336,17 +389,54 @@ export default function PanelAdmin({
           <div className="flex items-end">
             <button
               type="submit"
-              className="w-full rounded-lg bg-slate-900 py-2.5 font-bold text-amber-400 hover:bg-slate-800"
+              disabled={imagenesPreview.length < MINIMO_FOTOS}
+              className="w-full rounded-lg bg-slate-900 py-2.5 font-bold text-amber-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
             >
-              Publicar Propiedad
+              {faltanFotos > 0 ? `Faltan ${faltanFotos} foto(s)` : 'Publicar Propiedad'}
             </button>
           </div>
         </div>
 
-        {imagenPreview && (
-          <div className="mt-4 flex items-center gap-3">
-            <img src={imagenPreview} alt="Vista previa" className="h-20 w-32 rounded-lg border object-cover" />
-            <span className="text-xs font-medium text-emerald-700">✓ Imagen optimizada y lista para publicarse</span>
+        {errorFotos && (
+          <p className="mt-3 text-xs font-semibold text-red-600">{errorFotos}</p>
+        )}
+
+        {imagenesPreview.length > 0 && (
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 text-xs font-semibold text-slate-600">
+              {imagenesPreview.length >= MINIMO_FOTOS
+                ? `✓ ${imagenesPreview.length} fotos listas. La primera es la portada (puedes cambiarla con la estrella).`
+                : `Llevas ${imagenesPreview.length} foto(s). Sube ${faltanFotos} más para poder publicar.`}
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+              {imagenesPreview.map((imgSrc, idx) => (
+                <div key={idx} className="group relative overflow-hidden rounded-lg border border-slate-300 bg-white">
+                  <img src={imgSrc} alt={`Foto ${idx + 1}`} className="h-24 w-full object-cover" />
+                  {idx === 0 ? (
+                    <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-slate-950">
+                      Portada
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleHacerPortada(idx)}
+                      title="Usar como foto principal"
+                      className="absolute left-1 top-1 rounded bg-slate-900/75 p-1 text-white hover:bg-amber-500 hover:text-slate-950"
+                    >
+                      <Star className="h-3 w-3" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleEliminarFoto(idx)}
+                    title="Quitar foto"
+                    className="absolute right-1 top-1 rounded bg-red-600/90 p-1 text-white hover:bg-red-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </form>
@@ -360,7 +450,7 @@ export default function PanelAdmin({
           <table className="w-full text-left text-sm">
             <thead className="border-b bg-slate-50 text-slate-600">
               <tr>
-                <th className="p-3">Foto</th>
+                <th className="p-3">Galería</th>
                 <th className="p-3">Propiedad</th>
                 <th className="p-3">Tipo / Condición</th>
                 <th className="p-3">Zona</th>
@@ -370,39 +460,47 @@ export default function PanelAdmin({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {propiedades.map((p) => (
-                <tr key={p.id}>
-                  <td className="p-3">
-                    <img src={p.imagen} alt={p.titulo} className="h-10 w-14 rounded object-cover" />
-                  </td>
-                  <td className="p-3 font-medium text-slate-900">{p.titulo}</td>
-                  <td className="p-3 text-xs">
-                    {p.tipo} {p.condicion !== 'N/A' ? `(${p.condicion})` : ''}
-                  </td>
-                  <td className="p-3 text-slate-600">{p.zona}</td>
-                  <td className="p-3 font-semibold">${p.precioMXN.toLocaleString('es-MX')}</td>
-                  <td className="p-3">
-                    <select
-                      value={p.estatus}
-                      onChange={(e) => onActualizarEstatusProp(p.id, e.target.value as Propiedad['estatus'])}
-                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-semibold"
-                    >
-                      <option value="Disponible">Disponible</option>
-                      <option value="Apartada">Apartada</option>
-                      <option value="Vendida">Vendida</option>
-                    </select>
-                  </td>
-                  <td className="p-3">
-                    <button
-                      onClick={() => onEliminarPropiedad(p.id)}
-                      title="Eliminar propiedad"
-                      className="text-slate-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {propiedades.map((p) => {
+                const totalFotos = p.imagenes?.length || 1;
+                return (
+                  <tr key={p.id}>
+                    <td className="p-3">
+                      <div className="relative inline-block">
+                        <img src={p.imagen} alt={p.titulo} className="h-10 w-14 rounded object-cover" />
+                        <span className="absolute -bottom-1 -right-1 rounded bg-slate-900 px-1 text-[10px] font-bold text-amber-400">
+                          {totalFotos} fotos
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-3 font-medium text-slate-900">{p.titulo}</td>
+                    <td className="p-3 text-xs">
+                      {p.tipo} {p.condicion !== 'N/A' ? `(${p.condicion})` : ''}
+                    </td>
+                    <td className="p-3 text-slate-600">{p.zona}</td>
+                    <td className="p-3 font-semibold">${p.precioMXN.toLocaleString('es-MX')}</td>
+                    <td className="p-3">
+                      <select
+                        value={p.estatus}
+                        onChange={(e) => onActualizarEstatusProp(p.id, e.target.value as Propiedad['estatus'])}
+                        className="rounded border border-slate-300 bg-white px-2 py-1 text-xs font-semibold"
+                      >
+                        <option value="Disponible">Disponible</option>
+                        <option value="Apartada">Apartada</option>
+                        <option value="Vendida">Vendida</option>
+                      </select>
+                    </td>
+                    <td className="p-3">
+                      <button
+                        onClick={() => onEliminarPropiedad(p.id)}
+                        title="Eliminar propiedad"
+                        className="text-slate-400 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
